@@ -1,4 +1,5 @@
 These scripts are for formatting datasets downloaded from HF (for example) into the format used by the TRL trainers such as SFTTrainer, DPOTrainer, etc.
+
 [SFTTrainer format](https://huggingface.co/docs/trl/en/sft_trainer#dataset-format-support):
 ```
 {"messages": [{"role": "system", "content": "You are helpful"}, {"role": "user", "content": "What's the capital of France?"}, {"role": "assistant", "content": "..."}]}
