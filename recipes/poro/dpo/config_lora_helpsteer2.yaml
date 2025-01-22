@@ -1,0 +1,53 @@
+# Model arguments
+model_name_or_path: /scratch/project_462000444/zosaelai2/models/poro-mixed-poro-full-extended-cleaned-batch48
+torch_dtype: auto
+
+# LoRA arguments
+use_peft: true
+# load_in_4bit: true
+lora_r: 16
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+- query_key_value
+- dense
+- dense_4h_to_h
+- dense_h_to_4h
+- lm_head
+
+# Data training arguments
+dataset_mixer:
+  /scratch/project_462000444/finetuning_data/DPOTrainer_format/english/nvidia/HelpSteer2: 1.0
+dataset_splits:
+- train
+- test
+preprocessing_num_workers: 1
+
+# DPOTrainer arguments
+bf16: true
+beta: 0.01
+do_eval: false
+evaluation_strategy: epoch
+# eval_steps: 100
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+# hub_model_id: zephyr-7b-dpo-qlora
+learning_rate: 5.0e-6
+log_level: info
+logging_steps: 10
+lr_scheduler_type: cosine
+max_length: 1024
+max_prompt_length: 512
+num_train_epochs: 5
+optim: adamw_torch
+output_dir: data/poro-chat-dpo-lora-helpsteer2-lr-5e-6-epoch-5-batch-16 
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 4
+# push_to_hub: true
+save_strategy: "epoch"
+# save_steps: 100
+save_total_limit: 1
+seed: 42
+warmup_ratio: 0.1

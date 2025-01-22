@@ -1,0 +1,45 @@
+# Model arguments
+model_name_or_path: /scratch/project_462000444/zosaelai2/models/viking_v2_7B_iter_0476837_bfloat16
+torch_dtype: bfloat16
+
+# Data training arguments
+chat_template: "{% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+dataset_mixer:
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/eng/instruction-collection: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/fin/instruction-collection-poro: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/swe/instruction-collection-viking: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/dan/instruction-collection-viking: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/nor/instruction-collection-viking: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/isl/instruction-collection-viking: 1.0
+  /scratch/project_462000444/finetuning_data/SFTTrainer_format/xling/Tatoeba/translation-v2: 1.0
+dataset_splits:
+- train
+- test
+preprocessing_num_workers: 1
+
+# SFT trainer config
+bf16: true
+do_eval: false
+evaluation_strategy: epoch
+# eval_steps: 1000
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: False
+learning_rate: 5.0e-06
+log_level: info
+logging_steps: 50  
+logging_strategy: steps
+lr_scheduler_type: cosine
+max_seq_length: 2048
+max_steps: -1
+num_train_epochs: 3
+output_dir: data/viking-7b-instruction-collection-tatoeba-v2
+per_device_eval_batch_size: 4
+per_device_train_batch_size: 2
+remove_unused_columns: true
+save_strategy: "epoch"
+save_total_limit: 1
+seed: 42
+warmup_ratio: 0.1
+# packing: false
