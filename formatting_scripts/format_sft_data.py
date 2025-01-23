@@ -10,6 +10,7 @@ def argparser():
     ap.add_argument('--outfile', type=str, help="output path")
     ap.add_argument('--lang', default="en", type=str)
     ap.add_argument('--max_samples', default=None, type=int)
+    ap.add_argument('--dataset_name', default=None, type=str, help="For Aya only. Name of a dataset in the Aya collection")
     return ap
 
 def format_openhermes(filepath):
@@ -347,48 +348,50 @@ def format_sdsd_dialogues(filepath, add_system_role=False):
                 if valid_entry and len(messages['messages']) > 0:
                     f.write(json.dumps(messages, ensure_ascii=False) + "\n")
 
-def format_aya(filepath, outfile, max_samples):
+def format_aya(filepath, outfile, max_samples, dataset_name=None):
     if "english" in filepath and "train" in filepath:
         file = open(filepath)
         with open(outfile, "w") as f:
             for i, line in enumerate(file):
                 if max_samples is None or i < max_samples:
                     entry = json.loads(line)
-                    messages = {'messages': []}
-                    messages['messages'].append(
-                        {
-                            'role': 'user',
-                            'content': entry['inputs']
-                        }
-                    )
-                    messages['messages'].append(
-                        {
-                            'role': 'assistant',
-                            'content': entry['targets']
-                        }
-                    )
-                    f.write(json.dumps(messages, ensure_ascii=False) + "\n")
+                    if dataset_name is None or entry['dataset_name']==dataset_name:
+                        messages = {'messages': []}
+                        messages['messages'].append(
+                            {
+                                'role': 'user',
+                                'content': entry['inputs']
+                            }
+                        )
+                        messages['messages'].append(
+                            {
+                                'role': 'assistant',
+                                'content': entry['targets']
+                            }
+                        )
+                        f.write(json.dumps(messages, ensure_ascii=False) + "\n")
     else:
         data = [json.loads(line) for line in open(filepath)]
         if max_samples is None:
             max_samples = len(data)
         with open(outfile, 'w') as f:
             for i, entry in enumerate(data):
-                if max_samples is not None and i < max_samples:
-                    messages = {'messages': []}
-                    messages['messages'].append(
-                        {
-                            'role': 'user',
-                            'content': entry['inputs']
-                        }
-                    )
-                    messages['messages'].append(
-                        {
-                            'role': 'assistant',
-                            'content': entry['targets']
-                        }
-                    )
-                    f.write(json.dumps(messages, ensure_ascii=False) + "\n")
+                if dataset_name is None or entry['dataset_name']==dataset_name:
+                    if max_samples is not None and i < max_samples:
+                        messages = {'messages': []}
+                        messages['messages'].append(
+                            {
+                                'role': 'user',
+                                'content': entry['inputs']
+                            }
+                        )
+                        messages['messages'].append(
+                            {
+                                'role': 'assistant',
+                                'content': entry['targets']
+                            }
+                        )
+                        f.write(json.dumps(messages, ensure_ascii=False) + "\n")
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
