@@ -11,7 +11,7 @@
 #SBATCH -o %x.out
 #SBATCH -e %x.err
 
-mkdir -p logs
+# mkdir -p logs
 
 # Load modules
 module load LUMI #Loads correct compilers for the accelerators, propably not needed
@@ -26,7 +26,10 @@ python -m venv .align_venv --system-site-packages
 source .align_venv/bin/activate
 
 # Install pip packages
-pip install transformers 
-pip install --upgrade huggingface_hub
+# pip install --upgrade transformers 
+# pip install --upgrade huggingface_hub
+# pip install --upgrade accelerate
+# pip install --upgrade deepspeed
+pip install trl==0.12.0
 
 

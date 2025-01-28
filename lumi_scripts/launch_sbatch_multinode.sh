@@ -16,7 +16,7 @@
 echo "JOB NAME" $SLURM_JOB_NAME
 
 module use /appl/local/csc/modulefiles/ 
-module load pytorch 
+module load pytorch/2.5 
 source /scratch/project_462000444/zosaelai2/.align_venv/bin/activate
 
 export HF_DATASETS_CACHE="/scratch/project_462000444/zosaelai2/datasets_cache"
