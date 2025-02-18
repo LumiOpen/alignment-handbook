@@ -16,7 +16,7 @@
 # Load modules
 module load LUMI #Loads correct compilers for the accelerators, propably not needed
 module use /appl/local/csc/modulefiles/ #Add the module path needed for csc modules in Lumi
-module load pytorch
+module load pytorch/2.4
 
 
 #Create venv
