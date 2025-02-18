@@ -124,6 +124,7 @@ def main():
     # For ChatML we need to add special tokens and resize the embedding layer
     if "<|im_start|>" in tokenizer.chat_template and "<|im_start|>" not in tokenizer.additional_special_tokens:
         model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
+        tokenizer.chat_template = None
         model, tokenizer = setup_chat_format(model, tokenizer)
         model_kwargs = None
 
