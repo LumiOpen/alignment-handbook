@@ -1,8 +1,13 @@
 import re
 import json
 import sys
+import random
 from random import shuffle
 from argparse import ArgumentParser
+import fasttext
+fasttext.FastText.eprint = lambda x: None
+GLOTLID_PATH = "/scratch/project_462000353/zosaelai2/models/model.bin"
+GLOT_MODEL = fasttext.load_model(GLOTLID_PATH)
 
 def argparser():
     ap = ArgumentParser()
@@ -10,8 +15,45 @@ def argparser():
     ap.add_argument('--outfile', type=str, help="output path")
     ap.add_argument('--lang', default="en", type=str)
     ap.add_argument('--max_samples', default=None, type=int)
-    ap.add_argument('--dataset_name', default=None, type=str, help="For Aya only. Name of a dataset in the Aya collection")
+    ap.add_argument('--dataset_name', default=None, type=str, help="For Aya only. dataset_name in the Aya collection")
+    ap.add_argument('--task_type', default=None, type=str, help="For Aya only. task_type in the Aya collection")
     return ap
+
+def detect_language_glotlid(text):  
+    # remove newline from input text
+    text = text.replace("\n", " ")
+    lab, score = GLOT_MODEL.predict(text)
+    lang_code = lab[0].split("__")[-1][:3]
+    return lang_code
+
+def format_avoin_avustaja(filepath):
+    data = [json.loads(line) for line in open(filepath)]
+    
+
+def format_rip_scored_data_for_sft(filepath):
+    # data = [json.loads(line) for line in open(filepath)]
+    file = open(filepath)
+    outfile = filepath.replace(".jsonl", "-sfttrainer.jsonl")
+    with open(outfile, "w") as f: 
+        for i, line in enumerate(file):
+            line = json.loads(line)
+            prompt = line['prompt']
+            # response = line['best_response']['response']
+            response = line['responses'][0]
+            lang_prompt = detect_language_glotlid(prompt)
+            lang_response = detect_language_glotlid(response)
+            if lang_response == lang_prompt:
+                messages = {'messages': []}
+                messages['messages'].append({'role': 'user', 
+                                            'content': prompt})
+                messages['messages'].append({'role': 'assistant', 
+                                            'content': response})
+                f.write(
+                    json.dumps(messages, ensure_ascii=False) 
+                    + "\n"
+                    )
+        f.close()
+    print("Done! Saved SFTTrainer-formatted data as", outfile)
 
 def format_openhermes(filepath):
     print("OpenHermes data:", filepath)
@@ -348,50 +390,71 @@ def format_sdsd_dialogues(filepath, add_system_role=False):
                 if valid_entry and len(messages['messages']) > 0:
                     f.write(json.dumps(messages, ensure_ascii=False) + "\n")
 
-def format_aya(filepath, outfile, max_samples, dataset_name=None):
-    if "english" in filepath and "train" in filepath:
-        file = open(filepath)
-        with open(outfile, "w") as f:
-            for i, line in enumerate(file):
-                if max_samples is None or i < max_samples:
-                    entry = json.loads(line)
-                    if dataset_name is None or entry['dataset_name']==dataset_name:
-                        messages = {'messages': []}
-                        messages['messages'].append(
-                            {
-                                'role': 'user',
-                                'content': entry['inputs']
-                            }
-                        )
-                        messages['messages'].append(
-                            {
-                                'role': 'assistant',
-                                'content': entry['targets']
-                            }
-                        )
-                        f.write(json.dumps(messages, ensure_ascii=False) + "\n")
-    else:
-        data = [json.loads(line) for line in open(filepath)]
-        if max_samples is None:
-            max_samples = len(data)
-        with open(outfile, 'w') as f:
-            for i, entry in enumerate(data):
-                if dataset_name is None or entry['dataset_name']==dataset_name:
-                    if max_samples is not None and i < max_samples:
-                        messages = {'messages': []}
-                        messages['messages'].append(
-                            {
-                                'role': 'user',
-                                'content': entry['inputs']
-                            }
-                        )
-                        messages['messages'].append(
-                            {
-                                'role': 'assistant',
-                                'content': entry['targets']
-                            }
-                        )
-                        f.write(json.dumps(messages, ensure_ascii=False) + "\n")
+def format_aya(filepath, outfile, max_samples, dataset_name, task_type):
+    if dataset_name is not None:
+        print("Formatting Aya with dataset_name:", dataset_name)
+    if task_type is not None:
+        print("Formatting Aya with task_type:", task_type)
+    count = 0
+    file = open(filepath)
+    with open(outfile, "w") as f:
+        for i, line in enumerate(file):
+            if max_samples is None or i < max_samples:
+                entry = json.loads(line)
+                if (dataset_name is not None and entry['dataset_name']==dataset_name) or (task_type is not None and entry['task_type']==task_type):
+                    messages = {'messages': []}
+                    messages['messages'].append(
+                        {
+                            'role': 'user',
+                            'content': entry['inputs']
+                        }
+                    )
+                    messages['messages'].append(
+                        {
+                            'role': 'assistant',
+                            'content': entry['targets']
+                        }
+                    )
+                    count +=1
+                    f.write(json.dumps(messages, ensure_ascii=False) + "\n")
+    print(f"Total: {count}")
+
+def format_rip_dpo_data(filepath, outfile):
+    file = open(filepath)
+    with open(outfile, 'w') as f:
+        for i, line in enumerate(file):
+            entry = json.loads(line)
+            prompt = entry['prompt']
+            best_response = entry['best_response']['response']
+            best_score = entry['best_response']['score']
+            # for rejected, pick a random response with score < best_score
+            random_index = random.choice(range(len(entry['all_responses'])))
+            random_score = entry['all_responses'][random_index]['score']
+            while random_score > best_score:
+                random_index = random.choice(range(len(entry['all_responses'])))
+                random_score = entry['all_responses'][random_index]['score'] 
+            random_response = entry['all_responses'][random_index]['response']
+            chosen = [{'role': 'user', 
+                       'content': prompt},
+                       {'role': 'assistant',
+                        'content': best_response}
+            ]
+            rejected = [{'role': 'user',
+                         'content': prompt
+                        },
+                        {'role': 'assistant',
+                         'content':random_response
+                        }
+            ]
+            dpo_entry = {
+                'prompt': prompt,
+                'chosen': chosen,
+                'rejected': rejected
+            }
+            f.write(json.dumps(dpo_entry, ensure_ascii=False) + "\n")
+    print("Done! Saved DPO data to", outfile)
+
+
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
@@ -432,7 +495,10 @@ def main(argv):
     elif "sdsd" in filepath.lower():
         format_sdsd_dialogues(filepath, add_system_role=False)
     elif "aya" in filepath.lower():
-        format_aya(filepath, args.outfile, args.max_samples)
+        format_aya(filepath, args.outfile, args.max_samples, args.dataset_name, args.task_type)
+    elif "rip" in filepath.lower() or "tulu" in filepath.lower():
+        format_rip_scored_data_for_sft(filepath)
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
