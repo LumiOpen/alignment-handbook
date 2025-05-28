@@ -42,6 +42,16 @@ from alignment import (
 )
 from trl import SFTTrainer, setup_chat_format
 
+## Fix timeout issue for long preproc times
+orig_init = torch.distributed.init_process_group
+
+def patched_init(*args, **kwargs):
+    from datetime import timedelta
+    kwargs['timeout'] = timedelta(hours=1)
+    return orig_init(*args, **kwargs)
+
+torch.distributed.init_process_group = patched_init
+## end fix
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +59,8 @@ logger = logging.getLogger(__name__)
 def main():
     parser = H4ArgumentParser((ModelArguments, DataArguments, SFTConfig))
     model_args, data_args, training_args = parser.parse()
-
+    training_args.ddp_timeout = 3600
+    print("training_args:", training_args)
     # Set seed for reproducibility
     set_seed(training_args.seed)
 
