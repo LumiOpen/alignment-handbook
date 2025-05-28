@@ -1,0 +1,44 @@
+# Model arguments
+model_name_or_path: /scratch/project_462000444/zosaelai2/models/europa_7B_iter_0715255_bfloat16
+torch_dtype: bfloat16
+
+# Data training arguments
+chat_template: "{% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+dataset_mixer:
+  /scratch/project_462000353/posttraining_data/SFTTrainer_format/multiling/europa_sft_mix: 1.0
+dataset_splits:
+- train
+- test
+preprocessing_num_workers: 16
+
+# SFT trainer config
+bf16: true
+do_eval: false
+evaluation_strategy: epoch
+# eval_steps: 100
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: False
+learning_rate: 5.0e-06
+log_level: info
+logging_steps: 50  
+logging_strategy: steps
+lr_scheduler_type: linear
+max_seq_length: 4096
+max_steps: -1
+num_train_epochs: 2
+output_dir: data/europa-synthetic-epochs-2-batch-64-packed
+overwrite_output_dir: false
+per_device_eval_batch_size: 2
+per_device_train_batch_size: 2
+# push_to_hub: true
+remove_unused_columns: true
+# report_to:
+# - tensorboard
+save_strategy: "steps"
+save_steps: 500
+save_total_limit: 20
+seed: 42
+warmup_ratio: 0.03
+packing: true
