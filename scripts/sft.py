@@ -44,9 +44,21 @@ import transformers
 from transformers import set_seed
 from transformers.trainer_utils import get_last_checkpoint
 
-from alignment import ScriptArguments, SFTConfig, get_dataset, get_model, get_tokenizer
+from src.alignment import ScriptArguments, SFTConfig, get_dataset, get_model, get_tokenizer
 from trl import ModelConfig, SFTTrainer, TrlParser, get_peft_config, setup_chat_format
 
+
+## Fix timeout issue for long preproc times
+import torch
+orig_init = torch.distributed.init_process_group
+
+def patched_init(*args, **kwargs):
+    from datetime import timedelta
+    kwargs['timeout'] = timedelta(hours=1)
+    return orig_init(*args, **kwargs)
+
+torch.distributed.init_process_group = patched_init
+## end fix
 
 logger = logging.getLogger(__name__)
 
