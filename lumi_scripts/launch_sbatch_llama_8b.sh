@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=sft_8b
-#SBATCH --account=project_462000615  
+#SBATCH --job-name=sft
+#SBATCH --account=project_462000963
 #SBATCH --partition=standard-g
 #SBATCH --cpus-per-task=56
 #SBATCH --nodes=4
@@ -8,21 +8,24 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=480G
 #SBATCH --exclusive
-#SBATCH --time=30:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/%j.out # Name of stdout output file
 #SBATCH --error=logs/%j.err  # Name of stderr error file
 
+set -euxo pipefail
+
 echo "JOB NAME" $SLURM_JOB_NAME
 
-module use /appl/local/csc/modulefiles/ 
-module load pytorch/2.4
-source /scratch/project_462000353/zosaelai2/.align_venv/bin/activate
+VENV="/scratch/project_462000353/adamhrin/alignment-handbook/.venv"
 
-export HF_HOME="/scratch/project_462000353/hf_cache"
-export HF_DATASETS_CACHE="/scratch/project_462000353/zosaelai2/datasets_cache"
-export PYTHONPATH="/scratch/project_462000353/zosaelai2/.align_venv/lib/python3.10/site-packages"
-#pip show transformers
+module use /appl/local/csc/modulefiles/
+module load pytorch/2.7
+source $VENV/bin/activate
 
+export HF_HOME="/scratch/project_462000963/users/adamhrin/hf_cache"
+export HF_DATASETS_CACHE="/scratch/project_462000963/users/adamhrin/datasets_cache"
+export PYTHONPATH="$VENV/lib/python3.11/site-packages"
+export SSL_CERT_FILE=$(python -m certifi)
 
 #Distributed variables
 export MASTER_PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
@@ -34,26 +37,32 @@ export WORLD_SIZE=$((SLURM_GPUS_ON_NODE*SLURM_NNODES))
 
 
 #LOGGING/DEBUGGING
-export TORCH_DISTRIBUTED_DEBUG=DETAIL
+# export TORCH_DISTRIBUTED_DEBUG=DETAIL
 #HF_HUB_ENABLE_HF_TRANSFER=1 #Speeds up loading from hf hub, i think
-export NCCL_BLOCKING_WAIT=1
-# export TORCH_NCCL_ASYNC_ERROR_HANDLING=1 #This might not work with rccl
+# export TORCH_NCCL_BLOCKING_WAIT=1
+# export TORCH_DISTRIBUTED_DEBUG=DETAIL
+#HF_HUB_ENABLE_HF_TRANSFER=1 #Speeds up loading from hf hub, i think
+#export TORCH_NCCL_ASYNC_ERROR_HANDLING=1 #This might not work with rccl
 #export HSA_FORCE_FINE_GRAIN_PCIE=1 #Supposedly improves performance/prevents hanging
-# export HIP_LAUNCH_BLOCKING=1 #Removes async operations
+#export HIP_LAUNCH_BLOCKING=1 #Removes async operations
 #export TRANSFORMERS_VERBOSITY=error
 #export TRANSFORMERS_NO_ADVISORY_WARNINGS=1
-#export ACCELERATE_LOG_LEVEL=DEBUG
+export NCCL_DEBUG=INFO
+export ACCELERATE_LOG_LEVEL=INFO
 export OMP_NUM_THREADS=1 #This could be increased
 export TOKENIZERS_PARALLELISM=false #Removes error involved with the FastTokenizer and rust/python parallelism.
-ACCELERATE_CONFIG_FILE=recipes/accelerate_configs/deepspeed_zero3.yaml
-CONFIG_FILE=rrecipes/llama-3/sft/config_8b_eng_fin_final.yaml
+
+ACCELERATE_CONFIG_FILE=recipes/accelerate_configs/zero3.yaml
+CONFIG_FILE=${1:-"recipes/llama-3/sft/config_8b_poro2.yaml"}
 
 echo "JOBNAME" $SLURM_JOB_NAME
-echo "CONFIG" $CONFIG_FILE
+echo "ACCELERATE_CONFIG_FILE" $ACCELERATE_CONFIG_FILE
+echo "CONFIG_FILE" $CONFIG_FILE
+
 pwd -P
 
 export CMD=" \
-    scripts/run_sft.py $CONFIG_FILE
+    scripts/sft.py --config $CONFIG_FILE 
     "
 
 
